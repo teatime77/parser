@@ -158,7 +158,7 @@ export class Rational{
         return new Rational(this.numerator, this.denominator);
     }
 
-    str() : string {
+    toString() : string {
         if(this.denominator == 1){
 
             return `${this.numerator}`;
@@ -513,6 +513,10 @@ export abstract class Term {
         return this.putValue(text, false);
     }
 
+    toString() : string {
+        return this.str();
+    }
+
 
     htmldata(text : string) : string {
         termDic[this.id] = this;
@@ -807,7 +811,7 @@ export class RefVar extends Term{
         }
         else{
 
-            return `${this.value.str()} ${this.name}`;
+            return `${this.value} ${this.name}`;
         }
     }
 
@@ -843,7 +847,7 @@ export class ConstNum extends Term{
     }
 
     strid() : string{
-        return `${this.value.str()}`;
+        return `${this.value}`;
     }
 
     static fromRational(r : Rational) : ConstNum {
@@ -858,11 +862,11 @@ export class ConstNum extends Term{
     }
 
     str2() : string {
-        return this.value.str();        
+        return this.value.toString();        
     }
 
     strX() : string {
-        return this.value.str();        
+        return this.value.toString();        
     }
 
     tex2() : string {
@@ -980,7 +984,7 @@ export class App extends Term{
         }
         else{
 
-            return `${this.value.str()} ${s}`;
+            return `${this.value} ${s}`;
         }
     }
 
