@@ -607,6 +607,10 @@ export abstract class Term {
         return this.isValue(1);
     }
 
+    isValueOne() : boolean {
+        return this.value.is(1);
+    }
+
     isInt() : boolean {
         return this instanceof ConstNum && this.value.isInt();
     }
@@ -1250,6 +1254,9 @@ export class App extends Term{
         case "+": 
         case "-": 
             return 3;
+
+        case "..":
+            return 4;
         }
 
         return -1;
@@ -1619,8 +1626,22 @@ export class Parser {
         return trm1;
     }
 
-    ArithmeticExpression() : Term {
+    IntervalExpression() : Term {
         const trm1 = this.AdditiveExpression();
+        if(this.token.text == ".."){
+
+            this.nextToken("..");
+
+            const trm2 = this.AdditiveExpression();
+
+            return new App(operator(".."), [trm1, trm2]);
+        }
+
+        return trm1;
+    }
+
+    ArithmeticExpression() : Term {
+        const trm1 = this.IntervalExpression();
 
         if(! isArithmeticToken(this.current())){
             return trm1;
@@ -1630,7 +1651,7 @@ export class Parser {
         while( isArithmeticToken(this.current()) ){
             this.next();
 
-            const trm2 = this.AdditiveExpression();
+            const trm2 = this.IntervalExpression();
             app.addArg(trm2);
         }
 
