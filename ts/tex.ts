@@ -275,7 +275,7 @@ class TexNum extends TexLeaf {
     }
 
     texText() : string {
-        return this.num.value.str();
+        return this.num.value.toString();
     }
 }
 

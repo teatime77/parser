@@ -1576,19 +1576,11 @@ export class Parser {
             }
         }
 
-        if((! isArithmetic) && trm1 instanceof App && trm1.args[0] instanceof ConstNum){
-            if(trm1.args.length == 2){
-
-                const [num, trm2] = trm1.args;
-                trm2.value.setmul(num.value);
-                return trm2;
-            }
-            else{
-                const num = trm1.args[0];
-                trm1.value.setmul(num.value);
-                num.remArg();
-                return trm1;
-            }
+        if((! isArithmetic) && trm1 instanceof App && trm1.args[0] instanceof ConstNum && !(trm1.args[1] instanceof ConstNum)){
+            const num = trm1.args[0];
+            trm1.value.setmul(num.value);
+            num.remArg();
+            return trm1;
         }
     
         return trm1;
