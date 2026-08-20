@@ -5,7 +5,7 @@ export let termDic : { [id : number] : Term } = {};
 
 export const pathSep = ":";
 export let variables : Variable[] = [];
-let isArithmetic : boolean = false;
+let attachFactor : boolean = true;
 
 export function isShapeName(name : string) : boolean {
     const names = [
@@ -47,9 +47,7 @@ export function actionRef(name : string) : RefVar {
     return new RefVar(name);
 }
 
-export function parseMath(text: string, is_arithmetic : boolean = false) : Term {
-    isArithmetic = is_arithmetic;
-
+export function parseMath(text: string) : Term {
     // msg(`parse-Math:[${text}]`);
     const parser = new Parser(text);
     const trm = parser.RootExpression();
@@ -59,7 +57,14 @@ export function parseMath(text: string, is_arithmetic : boolean = false) : Term 
 
     trm.setParent(null);
 
-    isArithmetic = false;
+    return trm;
+}
+
+export function parseMathDetachFactor(text: string) : Term {
+    attachFactor = false;
+    const trm = parseMath(text)
+    attachFactor = true;
+
     return trm;
 }
 
@@ -1583,7 +1588,7 @@ export class Parser {
             }
         }
 
-        if((! isArithmetic) && trm1 instanceof App && trm1.args[0] instanceof ConstNum && !(trm1.args[1] instanceof ConstNum)){
+        if(attachFactor && trm1 instanceof App && trm1.args[0] instanceof ConstNum && !(trm1.args[1] instanceof ConstNum)){
             const num = trm1.args[0];
             trm1.value.setmul(num.value);
             num.remArg();
