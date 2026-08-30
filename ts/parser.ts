@@ -1,11 +1,16 @@
 import { TokenType, isLetter, isLetterOrAt, Token, lexicalAnalysis, TokenSubType } from "./lex.js";
 import { assert, MyError, msg, range, $ } from "./parser_util.js";
 
+export let isProof : boolean = false;
 export let termDic : { [id : number] : Term } = {};
 
 export const pathSep = ":";
 export let variables : Variable[] = [];
 let attachFactor : boolean = true;
+
+export function setIsProof(is_proof : boolean) : void {
+    isProof = is_proof;
+}
 
 export function isShapeName(name : string) : boolean {
     const names = [
@@ -1385,12 +1390,10 @@ export class Parser {
         return this.tokens.length == 0 ? null : this.tokens[0];
     }
 
-    readArgs(start: string, end : string, app : App){
-        this.nextToken(start);
-
+    readList(terms:Term[]) : void {
         while(true){
-            const trm = this.RelationalExpression();
-            app.args.push(trm);
+            const trm = this.LogicalExpression();
+            terms.push(trm);
 
             if(this.token.text == ","){
                 this.nextToken(",");
@@ -1399,6 +1402,12 @@ export class Parser {
                 break;
             }
         }
+    }
+
+    readArgs(start: string, end : string, app : App){
+        this.nextToken(start);
+
+        this.readList(app.args);
 
         this.nextToken(end);
     }
@@ -1417,14 +1426,32 @@ export class Parser {
 
                 return app;
             }
+            else if(this.token.text == '['){
+
+                let list = this.readBracketList();
+                let app = new App(refVar, [list]);
+
+                return app;
+            }
             else if(this.token.text == "."){
                 let app = new App(operator("."), [refVar]);
 
                 do {
                     this.nextToken(".");
-                    
-                    assert(this.token.typeTkn == TokenType.identifier);
-                    app.addArg(new RefVar(this.token.text));
+
+                    if(this.token.typeTkn == TokenType.identifier){
+
+                        app.addArg(new RefVar(this.token.text));
+                    }
+                    else if(isProof && this.token.typeTkn == TokenType.Number && this.token.subType == TokenSubType.integer){
+
+                        const n = parseInt(this.token.text);
+                        app.addArg(new ConstNum(n));
+                    }
+                    else{
+                        throw new MyError();
+                    }
+
                     this.next();
                 
                 } while(this.token.text == ".");
@@ -1437,7 +1464,13 @@ export class Parser {
             }
         }
         else if(this.token.typeTkn == TokenType.Number){
-            let n = parseFloat(this.token.text);
+            let n : number;
+            if(this.token.subType == TokenSubType.index){
+                n = parseInt(this.token.text.slice(1));
+            }
+            else{
+                n = parseFloat(this.token.text);
+            }
             if(isNaN(n)){
                 throw new MyError();
             }
@@ -1663,7 +1696,7 @@ export class Parser {
         return app;
     }
 
-    VariableDeclaration() : App {
+    readIds() : RefVar[]{
         const ref_vars : RefVar[] = [];
 
         while(true){
@@ -1682,6 +1715,12 @@ export class Parser {
             }
         }
 
+        return ref_vars;
+    }
+
+    VariableDeclaration() : App {
+        const ref_vars = this.readIds();
+        
         const id_list = new App(operator(","), ref_vars);
 
         this.nextToken("in");
@@ -1691,18 +1730,26 @@ export class Parser {
         return new App(operator("in"), [id_list, set]);
     }
 
+    readBracketList() : App {
+        const ref = new RefVar("[]");
+        const app = new App(ref, []);
+        this.readArgs("[", "]", app as App);
+
+        return app;
+    }
+
     RelationalExpression(in_and : boolean = false) : Term {
         const next_token = this.peek();
-        if(in_and && this.token.typeTkn == TokenType.identifier && next_token != null && next_token.text == ","){
-            return this.VariableDeclaration();
+        if(! isProof){
+
+            if(in_and && this.token.typeTkn == TokenType.identifier && next_token != null && next_token.text == ","){
+                return this.VariableDeclaration();
+            }
         }
 
         let trm1 : Term;
         if(this.token.text == "["){
-
-            const ref = new RefVar("[]");
-            trm1 = new App(ref, []);
-            this.readArgs("[", "]", trm1 as App);
+            trm1 = this.readBracketList();
         }
         else{
 
@@ -1773,7 +1820,7 @@ export class Parser {
     LogicalExpression(){
         const trm1 = this.OrExpression();
 
-        if([ "=>", "⇔" ].includes(this.token.text)){
+        if([ "=>", "⇔", "→" ].includes(this.token.text)){
             const opr = this.token.text;
 
             this.next();

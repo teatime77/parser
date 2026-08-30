@@ -1,4 +1,4 @@
-import { pathSep } from "./parser.js";
+import { isProof, pathSep } from "./parser.js";
 import { assert } from "./parser_util.js";
 
 export enum TokenType{
@@ -95,6 +95,8 @@ var SymbolTable : Array<string> = new  Array<string> (
     "&",
     "|",
     "?",
+
+    "→"
 );
     
 var KeywordMap : Set<string> = new  Set<string> ([
@@ -105,8 +107,13 @@ var KeywordMap : Set<string> = new  Set<string> ([
 var IdList : Array<string> = new  Array<string> (
 );
 
-export function isLetter(s : string) : boolean {
+export function isLetterOLD(s : string) : boolean {
     return s.length === 1 && ("a" <= s && s <= "z" || "A" <= s && s <= "Z" || s == "_");
+}
+
+export function isLetter(s : string) : boolean {
+    const symbols = ["∞", "∠"];
+    return s.length === 1 && (/^\p{L}$/u.test(s) || s == "_" || symbols.includes(s) );
 }
 
 function isDigit(s : string) : boolean {
@@ -126,6 +133,7 @@ export enum TokenSubType {
     integer,
     float,
     double,
+    index
 }
 
 export class Token{
@@ -236,9 +244,18 @@ export function lexicalAnalysis(text : string) : Token[] {
         }
         else if(ch1 == "#"){
 
-            token_type = TokenType.path;
+            if(isProof){
 
-            for (pos++; pos < text.length && (isDigit(text[pos]) || text[pos] == '-' || text[pos] == pathSep); pos++);
+                token_type = TokenType.Number;
+                sub_type = TokenSubType.index;
+                for (pos++; pos < text.length && isDigit(text[pos]); pos++);
+            }
+            else{
+
+                token_type = TokenType.path;
+
+                for (pos++; pos < text.length && (isDigit(text[pos]) || text[pos] == '-' || text[pos] == pathSep); pos++);
+            }
         }
         else if(ch1 == '"'){
             token_type = TokenType.String;
