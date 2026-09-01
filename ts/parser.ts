@@ -325,7 +325,12 @@ export abstract class Term {
 
         // コピーしたルートから同じパスを辿って項を得る。
         const this_cp = path.getTerm(root_cp);
-        assert(this_cp.str() == this.str());
+
+        const [this_cp_str, this_str] = [this_cp.str(), this.str()];
+        if(this_cp_str != this_str){
+            msg(`clone-root:[${this_cp_str}][${this_str}]`);
+            assert(false);
+        }
 
         // コピーしたルートと、thisと同じ位置の項を返す。
         return [root_cp, this_cp];
@@ -641,6 +646,16 @@ export abstract class Term {
         return this instanceof App && this.fncName == "lim";
     }
 
+    leftSide() : Term {
+        assert(this.isEq());
+        return (this as unknown as App).args[0];
+    }
+
+    rightSide() : Term {
+        assert(this.isEq());
+        return (this as unknown as App).args[1];
+    }
+
     dividend() : Term {
         assert(this.isDiv());
         return (this as any as App).args[0];
@@ -783,25 +798,34 @@ export class Path extends Term {
 
 export class Variable {
     name : string;
-    expr : Term;
-    depVars : Variable[];
+    type : Term | undefined;
+    init : Term | undefined;
+    expr : Term | undefined;
 
-    constructor(name : string, expr : Term){
+    constructor(name : string, type : Term | undefined, init : Term | undefined){
         variables.push(this);
         this.name = name;
-        this.expr = expr;
+        if(type != undefined){
 
-        const refs = allTerms(expr).filter(x => x instanceof RefVar && !(x.parent instanceof App && x.parent.fnc == x)) as RefVar[];
-        this.depVars = refs.map(ref => variables.find(v => v.name == ref.name)) as Variable[];
-        assert(this.depVars.every(x => x != undefined));
+            this.type = type.clone();
+        }
 
-        if(this.depVars.length != 0){
-            msg(`${this.name} depends ${this.depVars.map(x => x.name).join(" ")}`);
+        if(init != undefined){
+
+            this.init = init.clone();
         }
     }
 
-    rename(new_name : string){
-        this.name = new_name;
+    toString() : string {
+        let s = this.name;
+        if(this.type != undefined){
+            s += ` : ${this.type}`;
+        }
+        if(this.init != undefined){
+            s += ` = ${this.init}`;
+        }
+
+        return s;
     }
 }
 
@@ -1408,6 +1432,7 @@ export class Parser {
         this.nextToken(start);
 
         this.readList(app.args);
+        app.args.forEach(x => x.parent = app);
 
         this.nextToken(end);
     }
@@ -1440,17 +1465,14 @@ export class Parser {
                     this.nextToken(".");
 
                     if(this.token.typeTkn == TokenType.identifier){
-
-                        app.addArg(new RefVar(this.token.text));
                     }
                     else if(isProof && this.token.typeTkn == TokenType.Number && this.token.subType == TokenSubType.integer){
-
-                        const n = parseInt(this.token.text);
-                        app.addArg(new ConstNum(n));
                     }
                     else{
                         throw new MyError();
                     }
+
+                    app.addArg(new RefVar(this.token.text));
 
                     this.next();
                 
@@ -1581,7 +1603,7 @@ export class Parser {
 
             while(true){
                 let trm2 = this.UnaryExpression();
-                app.args.push(trm2);
+                app.addArg(trm2);
                 
                 if(this.token.text == app.fncName){
                     this.next();
@@ -1609,7 +1631,7 @@ export class Parser {
 
             while(true){
                 let trm2 = this.DivExpression();
-                app.args.push(trm2);
+                app.addArg(trm2);
                 
                 if(this.token.text == app.fncName){
                     this.next();
@@ -1762,7 +1784,7 @@ export class Parser {
 
             while(true){
                 let trm2 = this.ArithmeticExpression();
-                app.args.push(trm2);
+                app.addArg(trm2);
                 
                 if(this.token.text == app.fncName){
                     this.next();
@@ -1858,7 +1880,7 @@ export class Parser {
             this.next();
 
             let trm = this.ArithmeticExpression();
-            app.args.push(trm);
+            app.addArg(trm);
 
             return app;
         }
