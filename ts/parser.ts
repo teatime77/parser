@@ -260,6 +260,7 @@ export abstract class Term {
     canceled : boolean = false;
     colorName  : string | undefined;
     hash : bigint = 0n;
+    hash2:string = "";
 
     constructor(){
         this.id = termId++;
@@ -871,13 +872,15 @@ export class RefVar extends Term{
 
 
 export class ConstNum extends Term{
+    text : string;
     static zero() : ConstNum {
         return new ConstNum(0);
     }
 
-    constructor(numerator : number, denominator : number = 1){
+    constructor(numerator : number, denominator : number = 1, text : string = ""){
         super();
         this.value = new Rational(numerator, denominator);
+        this.text = text;
     }
 
     equal(trm : Term) : boolean {
@@ -1486,18 +1489,12 @@ export class Parser {
             }
         }
         else if(this.token.typeTkn == TokenType.Number){
-            let n : number;
-            if(this.token.subType == TokenSubType.index){
-                n = parseInt(this.token.text.slice(1));
-            }
-            else{
-                n = parseFloat(this.token.text);
-            }
+            let n = parseFloat(this.token.text);
             if(isNaN(n)){
                 throw new MyError();
             }
 
-            trm = new ConstNum(n);
+            trm = new ConstNum(n, 1, this.token.text);
             this.next();
         }
         else if(this.token.typeTkn == TokenType.String){

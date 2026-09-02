@@ -132,8 +132,7 @@ export enum TokenSubType {
     unknown,
     integer,
     float,
-    double,
-    index
+    double
 }
 
 export class Token{
@@ -195,7 +194,7 @@ export function lexicalAnalysis(text : string) : Token[] {
             token_type = TokenType.newLine;
             pos++;
         }
-        else if (isLetterOrAt(ch1 + ch2)){
+        else if (isLetterOrAt(ch1 + ch2) || isProof && ch1 == "#"){
             // 識別子の最初の文字の場合
 
             // 識別子の文字の最後を探します。識別子の文字はユニコードカテゴリーの文字か数字か'_'。
@@ -244,18 +243,9 @@ export function lexicalAnalysis(text : string) : Token[] {
         }
         else if(ch1 == "#"){
 
-            if(isProof){
+            token_type = TokenType.path;
 
-                token_type = TokenType.Number;
-                sub_type = TokenSubType.index;
-                for (pos++; pos < text.length && isDigit(text[pos]); pos++);
-            }
-            else{
-
-                token_type = TokenType.path;
-
-                for (pos++; pos < text.length && (isDigit(text[pos]) || text[pos] == '-' || text[pos] == pathSep); pos++);
-            }
+            for (pos++; pos < text.length && (isDigit(text[pos]) || text[pos] == '-' || text[pos] == pathSep); pos++);
         }
         else if(ch1 == '"'){
             token_type = TokenType.String;
